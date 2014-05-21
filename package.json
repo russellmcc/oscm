@@ -1,0 +1,43 @@
+{
+  "name": "oscc",
+  "version": "0.0.0",
+  "author": {
+    "name": "Russell McClellan",
+    "email": "russell.mcclellan@gmail.com",
+    "url": "http://www.russellmcc.com"
+  },
+  "bin" : {
+      "oscc": "main.js"
+  },
+  "config" : {
+      "port": "8899"
+  },
+  "description": "Simple utility to map CC messages to OSC messages",
+  "keywords": [
+    "open sound control",
+    "OSC",
+    "music control",
+    "MIDI",
+    "NIME"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/russellmcc/node-oscc.git"
+  },
+  "dependencies": {
+      "osc-min" : "*",
+      "midi" : "*"
+  },
+  "devDependencies": {
+      "coffee-script": ">=1.7.1 <2.0.0"
+  },
+  "directories": {
+  },
+  "engines": {
+    "node": ">=0.6.0"
+  },
+  "scripts": {
+      "prepublish" : "coffee -c main.coffee"
+      "start" : "./main.js"
+  }
+}
