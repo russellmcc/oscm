@@ -37,7 +37,7 @@
     "node": ">=0.6.0"
   },
   "scripts": {
-      "prepublish" : "coffee -c main.coffee"
+      "prepublish" : "coffee --bare --no-header -c main.coffee",
       "start" : "./main.js"
   }
 }
