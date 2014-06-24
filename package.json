@@ -1,5 +1,5 @@
 {
-  "name": "oscc",
+  "name": "oscm",
   "version": "0.0.0",
   "author": {
     "name": "Russell McClellan",
@@ -7,12 +7,12 @@
     "url": "http://www.russellmcc.com"
   },
   "bin" : {
-      "oscc": "main.js"
+      "oscm": "main.js"
   },
   "config" : {
       "port": "8899"
   },
-  "description": "Simple utility to map CC messages to OSC messages",
+  "description": "Minimalist osc-to-midi translator",
   "keywords": [
     "open sound control",
     "OSC",
@@ -20,10 +20,6 @@
     "MIDI",
     "NIME"
   ],
-  "repository": {
-    "type": "git",
-    "url": "http://github.com/russellmcc/node-oscc.git"
-  },
   "dependencies": {
       "osc-min" : "*",
       "midi" : "*"
