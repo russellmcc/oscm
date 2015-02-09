@@ -4,90 +4,93 @@
 midi = require 'midi'
 dgram = require 'dgram'
 osc = require 'osc-min'
+mdns = require 'mdns'
 
 # Set up a new input
 output = new midi.output()
-
-# Count the available output ports.
-outputs = []
-if output.getPortCount() is 0
-  console.log "No MIDI Ports found, exiting..."
-  process.exit(1)
-else
-  console.log "#{output.getPortCount()} MIDI Ports found: "
-for n in [0...output.getPortCount()]
-  console.log "\tOutput #{n}: #{output.getPortName n}"
-  t = new midi.output()
-  t.openPort n
-  outputs.push t
-  outputs[output.getPortName n] = t
-
-port = process.env.npm_package_config_port ? 41234
 
 # helpers for common midi messages
 midiChanMsg = (chan, prefix, byte2, byte3) ->
   return [(prefix + chan - 1), byte2] unless byte3?
   return [(prefix + chan - 1), byte2, byte3]
 
-sendIfAvailable = (output, msg) ->
-  output = +output if not outputs[output]?
-  return unless outputs[output]?
-  outputs[output].sendMessage msg
-
-handleDefaultMidiChanMsg = (prefix) -> (d, m) ->
+defaultMidiChanMsg = (prefix, d, m) ->
   val = ~~(+m.args[0].value)
 
-  if d[3]?
-    sendIfAvailable d[1], midiChanMsg +d[2], prefix, +d[3], val
+  if d[2]?
+    return midiChanMsg +d[1], prefix, +d[2], val
   else
-    sendIfAvailable d[1], midiChanMsg +d[2], prefix, val
+    return midiChanMsg +d[1], prefix, val
 
-# this is the osc to midi translation map
-oscToMIDI = [
+oscToMIDIMap = [
   {
-    regex: /^\/midi\/([^\/]+)\/(\d+)\/note\/(\d+)\/off$/
-    f: handleDefaultMidiChanMsg 0x80
+    regex: /^\/chan\/(\d+)\/note\/(\d+)\/off$/
+    f: (d, m) -> defaultMidiChanMsg 0x80, d, m
   }
   {
-    regex: /^\/midi\/([^\/]+)\/(\d+)\/note\/(\d+)\/on$/
-    f: handleDefaultMidiChanMsg 0x90
+    regex: /^\/chan\/(\d+)\/note\/(\d+)\/on$/
+    f: (d, m) -> defaultMidiChanMsg 0x90, d, m
   }
   {
-    regex: /^\/midi\/([^\/]+)\/(\d+)\/aftertouch\/(\d+)$/
-    f: handleDefaultMidiChanMsg 0xA0
+    regex: /^\/chan\/(\d+)\/aftertouch\/(\d+)$/
+    f: (d, m) -> defaultMidiChanMsg 0xA0, d, m
   }
   {
-    regex: /^\/midi\/([^\/]+)\/(\d+)\/cc\/(\d+)$/
-    f: handleDefaultMidiChanMsg 0xB0
+    regex: /^\/chan\/(\d+)\/cc\/(\d+)$/
+    f: (d, m) -> defaultMidiChanMsg 0xB0, d, m
   }
   {
-    regex: /^\/midi\/([^\/]+)\/(\d+)\/program$/
-    f: handleDefaultMidiChanMsg 0xC0
+    regex: /^\/chan\/(\d+)\/program$/
+    f: (d, m) -> defaultMidiChanMsg 0xC0, d, m
   }
   {
-    regex: /^\/midi\/([^\/]+)\/(\d+)\/aftertouch$/
-    f: handleDefaultMidiChanMsg 0xD0
+    regex: /^\/chan\/(\d+)\/aftertouch$/
+    f: (d, m) -> defaultMidiChanMsg 0xD0, d, m
   }
   {
-    regex: /^\/midi\/([^\/]+)\/(\d+)\/pitchbend$/
+    regex: /^\/chan\/(\d+)\/pitchbend$/
     f: (d, m) ->
       val = +m.args[0].value + 0x2000
-      sendIfAvailable d[1], [0xE0 + +d[2] - 1, (val & 0x7f), ~~(val / 0x80)]
+      return [0xE0 + +d[1] - 1, (val & 0x7f), ~~(val / 0x80)]
   }
 ]
 
-handleOSC = (message) ->
-  for {regex, f} in oscToMIDI
+oscToMIDI = (message) ->
+  for {regex, f} in oscToMIDIMap
     r = regex.exec message.address
     if r?
-      f r, message
-      return
+      return f r, message
 
-sock = dgram.createSocket "udp4", (msg, rinfo) ->
-  try
-    handleOSC osc.fromBuffer msg
-  catch error
-    console.log "invalid OSC packet", error
-sock.bind port
+class OSCMidiPort
+  constructor: (@midiPortNumber) ->
+    @midiPort = new midi.output()
+    @midiName = @midiPort.getPortName @midiPortNumber
 
-console.log "OSC listener running at http://localhost:#{port}"
+    @midiPort.openPort @midiPortNumber
+
+    @sock = dgram.createSocket "udp4", (msg, rinfo) =>
+      try
+        @handleOSC osc.fromBuffer msg
+      catch error
+        console.log "invalid OSC packet" , error
+    @sock.bind 0, (err) =>
+      unless err
+        @advert = new mdns.Advertisement (mdns.udp 'osc'), @sock.address().port, {name: "OSC MIDI Bridge: #{@midiName}"}
+        @advert.start()
+        console.log "OSC listener for #{@midiName} running at http://localhost:#{@sock.address().port}"
+      else
+        console.error "error occured while opening socket: #{err}"
+
+  handleOSC: (message) ->
+    m = oscToMIDI message
+    console.log m
+    @midiPort.sendMessage m if m?
+
+# Count the available output ports.
+outputs = []
+if output.getPortCount() is 0
+  console.log "No MIDI Ports found, exiting..."
+  process.exit(1)
+
+for n in [0...output.getPortCount()]
+  outputs.push new OSCMidiPort(n)

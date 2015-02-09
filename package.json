@@ -6,11 +6,11 @@
     "email": "russell.mcclellan@gmail.com",
     "url": "http://www.russellmcc.com"
   },
-  "bin" : {
-      "oscm": "main.js"
+  "bin": {
+    "oscm": "main.js"
   },
-  "config" : {
-      "port": "8899"
+  "config": {
+    "port": "8899"
   },
   "description": "Minimalist osc-to-midi translator",
   "keywords": [
@@ -21,19 +21,19 @@
     "NIME"
   ],
   "dependencies": {
-      "osc-min" : "*",
-      "midi" : "*"
+    "mdns": "^2.2.4",
+    "midi": "*",
+    "osc-min": "*"
   },
   "devDependencies": {
-      "coffee-script": ">=1.7.1 <2.0.0"
+    "coffee-script": ">=1.7.1 <2.0.0"
   },
-  "directories": {
-  },
+  "directories": {},
   "engines": {
     "node": ">=0.6.0"
   },
   "scripts": {
-      "prepublish" : "coffee --bare --no-header -c main.coffee",
-      "start" : "./main.js"
+    "prepublish": "coffee --bare --no-header -c main.coffee",
+    "start": "./main.js"
   }
 }
