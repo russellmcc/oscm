@@ -5,6 +5,8 @@ midi = require 'midi'
 dgram = require 'dgram'
 osc = require 'osc-min'
 mdns = require 'mdns'
+fs = require 'fs'
+path = require 'path'
 
 # Set up a new input
 output = new midi.output()
@@ -55,11 +57,20 @@ oscToMIDIMap = [
   }
 ]
 
+# load all our sysex paths
+sysexPath = path.join __dirname, 'sysex'
+for p in fs.readdirSync path.join __dirname, 'sysex'
+  continue unless p.substring(p.length - 3) is ".js"
+  moreMap = require(path.join sysexPath, p)
+  oscToMIDIMap = oscToMIDIMap.concat moreMap
+
+
 oscToMIDI = (message) ->
   for {regex, f} in oscToMIDIMap
     r = regex.exec message.address
     if r?
       return f r, message
+  console.log "Nothing matched message #{message.address}"
 
 class OSCMidiPort
   constructor: (@midiPortNumber) ->
@@ -77,7 +88,7 @@ class OSCMidiPort
       unless err
         @advert = new mdns.Advertisement (mdns.udp 'osc'), @sock.address().port, {name: "OSC MIDI Bridge: #{@midiName}"}
         @advert.start()
-        console.log "OSC listener for #{@midiName} running at http://localhost:#{@sock.address().port}"
+        console.log "OSC listener for #{@midiName} running at udp localhost:#{@sock.address().port}"
       else
         console.error "error occured while opening socket: #{err}"
 
